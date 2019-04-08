@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Mote Stick
-# set mote brightness
+# set mote brightness (only white)
 #
 # Rob on Earth 2019-04-06
 
@@ -15,31 +15,28 @@ def setstick(s, b, i):
     mote = Mote() # new instance of the Mote class, will do all the USB init
     state = getmotestate()
     if i!=0:
-        print("increaseby",i)
         b = getbrightness(state, s) + i
-        print("new b",b)
         if b<0:
             b=0
         elif b>9:
             b=9
-        print("b is normalised as ",b)
-    state = setbrightness(state, s, b)
+    state = setbrightness(state, s, b, i)
     for m in range(1,4+1):
         mote.configure_channel(m, 16, False) # configure for use the Mote sticks
         setpixels(m, state[m-1][0], state[m-1][1], state[m-1][2], mote)
     mote.show()
     setmotestate(state, s, state[s-1][0], state[s-1][1], state[s-1][2])
 
-def setbrightness(state, stick, brightness):
+def setbrightness(state, stick, brightness, increaseby):
     if stick>0:
-        state[stick-1][0] = calcbrightness(brightness)  
-        state[stick-1][1] = calcbrightness(brightness)  
-        state[stick-1][2] = calcbrightness(brightness)  
+        state[stick-1][0] = calcbrightness(brightness, increaseby, state[stick-1][0])  
+        state[stick-1][1] = calcbrightness(brightness, increaseby, state[stick-1][1])  
+        state[stick-1][2] = calcbrightness(brightness, increaseby, state[stick-1][2])  
     else:
         for s in range(4):
-            state[s][0] = calcbrightness(brightness)  
-            state[s][1] = calcbrightness(brightness)  
-            state[s][2] = calcbrightness(brightness)  
+            state[s][0] = calcbrightness(brightness, increaseby, state[s][0])  
+            state[s][1] = calcbrightness(brightness, increaseby, state[s][1])  
+            state[s][2] = calcbrightness(brightness, increaseby, state[s][2])  
     return state
 
 def getbrightness(state, stick):
@@ -73,7 +70,7 @@ def calcbrightnessrating(c):
     return b 
 
 
-def calcbrightness(b):
+def calcbrightness(b,i,oc):
     if b== 9:
         c=255
     elif b== 8:
