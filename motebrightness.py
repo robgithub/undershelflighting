@@ -11,9 +11,18 @@ from mote import Mote
 picklefilename = "mote.pickle"
 
 # set stick
-def setstick(s,b):
+def setstick(s, b, i):
     mote = Mote() # new instance of the Mote class, will do all the USB init
     state = getmotestate()
+    if i!=0:
+        print("increaseby",i)
+        b = getbrightness(state, s) + i
+        print("new b",b)
+        if b<0:
+            b=0
+        elif b>9:
+            b=9
+        print("b is normalised as ",b)
     state = setbrightness(state, s, b)
     for m in range(1,4+1):
         mote.configure_channel(m, 16, False) # configure for use the Mote sticks
@@ -33,6 +42,37 @@ def setbrightness(state, stick, brightness):
             state[s][2] = calcbrightness(brightness)  
     return state
 
+def getbrightness(state, stick):
+    b = 0
+    if stick==0:
+        stick==1 
+    b = calcbrightnessrating(state[stick-1][0])
+    return b
+
+def calcbrightnessrating(c):
+    if c== 255:
+        b=9
+    elif c>= 220:
+        b=8
+    elif c>= 190:
+        b=7
+    elif c>= 160:
+        b=6
+    elif c>= 130:
+        b=5
+    elif c>= 100:
+        b=4
+    elif c>= 70:
+        b=3
+    elif c>= 40:
+        b=2
+    elif c>= 10:
+        b=1
+    else:
+        b=0
+    return b 
+
+
 def calcbrightness(b):
     if b== 9:
         c=255
@@ -50,6 +90,8 @@ def calcbrightness(b):
         c=70
     elif b== 2:
         c=40
+    elif b== 1:
+        c=10
     else:
         c=0
     return c 
@@ -72,18 +114,20 @@ def setpixels(s, r, g, b, m):
         m.set_pixel(s, p, r, g, b)
 
 def usage():
-    print("Usage python motebrightness -s {STICK} -b {BRIGHTNESS}")
+    print("Usage python motebrightness -s {STICK} -b {BRIGHTNESS} --increase --decrease --help")
     print("Stick values are 1-4")
     print("Brightness values are in the 0-9 range ")
-    print("if {STICK} is not supplied then brightness will effect all sticks")
+    print("increase and decrease override BRIGHTNESS values")
+    print("if {STICK} is not supplied then brightness/increase/decrease will effect all sticks")
 
 try:
-  opts, args = getopt.getopt(sys.argv[1:], 's:b:h', ['stick=', 'brightness=', 'help'])
+  opts, args = getopt.getopt(sys.argv[1:], 's:b:idh', ['stick=', 'brightness=', 'increase', 'decrease', 'help'])
 except getopt.GetoptError:
   usage()
   sys.exit(2)
 stick=0
 brightness=0
+increaseby=0
 for opt, arg in opts:
   if opt in ('-h', '--help'):
     usage()
@@ -92,7 +136,11 @@ for opt, arg in opts:
     stick = arg
   elif opt in ('-b', '--brightness'):
     brightness = arg
+  elif opt in ('-i', '--increase'):
+    increaseby = 1
+  elif opt in ('-d', '--decrease'):
+    increaseby = -1
   else:
     usage()
     sys.exit(2)
-setstick(int(stick), int(brightness))
+setstick(int(stick), int(brightness), increaseby)

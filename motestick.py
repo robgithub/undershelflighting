@@ -17,9 +17,14 @@ def setstick(s,r,g,b):
     for m in range(1,4+1):
         mote.configure_channel(m, 16, False) # configure for use the Mote sticks
         setpixels(m, state[m-1][0], state[m-1][1], state[m-1][2], mote)
-    setpixels(s,r,g,b,mote)
+    if s==0:
+        for st in range(1,4+1):
+            setpixels(st,r,g,b,mote)
+            setmotestate(state, st, r, g, b)
+    else:
+        setpixels(s,r,g,b,mote)
+        setmotestate(state, s, r, g, b)
     mote.show()
-    setmotestate(state, s, r, g, b)
 
 
 # get state from pickle file or defaults
@@ -46,7 +51,7 @@ def usage():
     print("Usage python motestick -s {STICK} -r {RED} -g {GREEN} -b {BLUE}")
     print("Stick values are 1-4")
     print("Colour values are in the 0-255 range ")
-    print("no parameters will clear stick 1")
+    print("no parameters will clear all")
     print("no colours parameters will clear stick")
 
 try:
@@ -54,7 +59,7 @@ try:
 except getopt.GetoptError:
   usage()
   sys.exit(2)
-stick=1
+stick=0
 red=0
 green=0
 blue=0
