@@ -4,52 +4,72 @@
 #
 # Rob 2019-04-15
 
-import sys, getopt, pickle, os, colorsys
+import sys, getopt, pickle, os, colorsys, time
 from mote import Mote
 
 config_filename = "data_fadecontroller.pickle"
 
-#try and read config pickle
-def load_config(config_filename):
+# Pickle loader
+def load_pickle(filename, default):
    try:
-       config = pickle.load( open( config_filename, "rb" ) )
+       obj = pickle.load( open( filename, "rb" ) )
    except IOError:
-       config = { 'colour_filename':"mote.pickle", 'brightness_filename':"data_fadecontrollerbrightness.pickle", 'increase':1.0, 'decrease':0.1} 
-   return config
+       obj = default 
+   return obj
+
+# Pickle saver 
+def save_pickle(filename, obj):
+    print(filename, obj)
+    pickle.dump( obj, open( filename, "wb" ) )
+
+# try and read config pickle
+def load_config(config_filename):
+   return load_pickle(config_filename, { 'colour_filename':"mote.pickle", 'brightness_filename':"data_fadecontrollerbrightness.pickle", 'increase':1.0, 'decrease':0.1, 'poll_interval':4}) 
 
 def load_state(colour_filename, brightness_filename):
    colour = load_colour(colour_filename)
    brightness = load_brightness(brightness_filename)
    return colour, brightness
 
+# try and read colour pickle
 def load_colour(filename):
-   #try and read colour pickle
-   colour = None
-   return colour
+   return load_pickle(filename, [[0]*3 for i in range(4)]) 
 
+# try and read brightness pickle
 def load_brightness(filename):
-   #try and read brightness pickle
-   brightness = None
-   return brightness
+   return load_pickle(filename, 1.0) 
 
-def save_colour(colour, colour_filename):
+def save_colour(colour, filename):
    # save updated colour
    print("save colour")
+   save_pickle(filename, colour)
 
-def save_brightness(brightness, brightness_filename):
+def save_brightness(brightness, filename):
    # save updated brightness
    print("save brightness")
+   save_pickle(filename, brightness)
  
 def ping_service(colour, brightness, config):
-   # listen for pings
-   colour = calculate_colour(colour, brightness, config["increase"])
-   colour = calculate_colour(colour, brightness, config["decrease"])
-   save_colour(colour, config["colour_filename"])
-   save_brightness(brightness, config["brightness_filename"])
+    print("...starting ping service  CTRL+c to quit")
+    try:
+        while True:
+            print("ping service wakes up")
+            # check queue
+            is_ping = False
+            if is_ping:
+                colour, brightness = calculate_colour(colour, brightness, config["increase"])
+            else:    
+                colour, brightness = calculate_colour(colour, brightness, config["decrease"])
+            save_colour(colour, config["colour_filename"])
+            save_brightness(brightness, config["brightness_filename"])
+            time.sleep(config["poll_interval"])
+
+    except KeyboardInterrupt:
+        print("terminating")
 
 def calculate_colour(colour, brightness, change):
    # colour conversion
-   return colour
+   return colour, brightness
 
 def init_motes(colour):
    print("initialising Motes")
@@ -65,7 +85,7 @@ def merge_objects(obj1, obj2):
 def usage():
     print("Usage python fadecontroller --config-filename --colour-filename {FILENAME} --brightness-filename {FILENAME} --increase {INCREASE} --decrease {DECREASE} --poll-interval {POLL}")
     print("INCREASE and DECREASE values are between 0.0 - 1.0")
-    print("{POLL} interval is in seconds")
+    print("{POLL} interval is in seconds and can be fractional")
     print("No parameters are mandatory")
 
 try:
@@ -85,22 +105,23 @@ for opt, arg in opts:
   elif opt in ('-b', '--brightness-filename'):
     config_from_args["brightness_filename"] = arg
   elif opt in ('-i', '--increase'):
-    config_from_args["increase"] = arg
+    config_from_args["increase"] = float(arg)
   elif opt in ('-d', '--decrease'):
-    config_from_args["decrease"] = arg
+    config_from_args["decrease"] = float(arg)
   elif opt in ('-p', '--poll-interval'):
-    config_from_args["poll_interval"] = arg
+    config_from_args["poll_interval"] = float(arg)
   else:
     usage()
     sys.exit(2)
 print(config_filename)
 config = merge_objects(load_config(config_filename), config_from_args)
 print(config)
-sys.exit(0)
 
+save_pickle(config_filename, config)
 print("Fade Controller Starting")
 colour, brightness = load_state(config["colour_filename"], config["brightness_filename"])
+print(colour, brightness)
+
 init_motes(colour)
-print("...starting ping service")
+
 ping_service(colour, brightness, config)
-print("terminating")
