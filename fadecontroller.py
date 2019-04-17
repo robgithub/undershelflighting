@@ -4,7 +4,7 @@
 #
 # Rob 2019-04-15
 
-import sys, getopt, pickle, os, colorsys, time
+import sys, getopt, pickle, os, colorsys, socket 
 from mote import Mote
 
 _config_filename = "data_fadecontroller.pickle"
@@ -48,10 +48,24 @@ def ping_service(mote, colour, brightness, config):
     print("...starting ping service  CTRL+c to quit")
     colour_original = colour
     try:
+        s = socket.socket(socket.AF_INET,socket.SOCK_RAW,socket.IPPROTO_ICMP)
+        s.setsockopt(socket.SOL_IP, socket.IP_HDRINCL, 1)
+        s.settimeout(config["poll_interval"])
+    except socket.error, err:
+        print err
+        print "run with sudo"
+        sys.exit(2)
+    try:
         while True:
             print("ping service wakes up")
             # check queue
             is_ping = False
+            try:
+                data, addr = s.recvfrom(1508)
+                print "Packet from %r: %r" % (addr,data)
+                is_ping = True
+            except socket.timeout:
+                print "timeout"
             current_brightness = brightness
             if is_ping:
                 colour, brightness = calculate_colour_from_change(colour_original, brightness, config["increase"])
@@ -60,7 +74,6 @@ def ping_service(mote, colour, brightness, config):
             if brightness != current_brightness:
                 save_brightness(brightness, config["brightness_filename"])
                 set_mote_sticks(mote, colour)
-            time.sleep(config["poll_interval"])
 
     except KeyboardInterrupt:
         print("terminating")
