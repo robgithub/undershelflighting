@@ -4,7 +4,7 @@ p1
 F0.2
 sS'decrease'
 p2
-F0.1
+F0.2
 sS'colour_filename'
 p3
 S'mote.pickle'
@@ -15,5 +15,5 @@ S'data_fadecontrollerbrightness.pickle'
 p6
 sS'poll_interval'
 p7
-F4.0
+F2.0
 s.

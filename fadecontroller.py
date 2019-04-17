@@ -46,17 +46,20 @@ def save_brightness(brightness, filename):
  
 def ping_service(mote, colour, brightness, config):
     print("...starting ping service  CTRL+c to quit")
+    colour_original = colour
     try:
         while True:
             print("ping service wakes up")
             # check queue
-            is_ping = True
+            is_ping = False
+            current_brightness = brightness
             if is_ping:
-                colour, brightness = calculate_colour_from_change(colour, brightness, config["increase"])
+                colour, brightness = calculate_colour_from_change(colour_original, brightness, config["increase"])
             else:    
-                colour, brightness = calculate_colour_from_change(colour, brightness, 0.0-config["decrease"])
-            save_brightness(brightness, config["brightness_filename"])
-            set_mote_sticks(mote, colour)
+                colour, brightness = calculate_colour_from_change(colour_original, brightness, 0.0-config["decrease"])
+            if brightness != current_brightness:
+                save_brightness(brightness, config["brightness_filename"])
+                set_mote_sticks(mote, colour)
             time.sleep(config["poll_interval"])
 
     except KeyboardInterrupt:
@@ -105,8 +108,9 @@ def init_motes(colour, brightness):
     #calculate colour for brightness
     # just first stick at the moment
     h,s,v = colorsys.rgb_to_hsv(colour[0][0], colour[0][1], colour[0][2])
-    colour[0][0], colour[0][1], colour[0][2] = rgb_to_decimal(colorsys.hsv_to_rgb(h, s, brightness))
-    set_mote_sticks(mote, colour)
+    colour_new = [[0]*3 for i in range(4)]
+    colour_new[0][0], colour_new[0][1], colour_new[0][2] = rgb_to_decimal(colorsys.hsv_to_rgb(h, s, brightness))
+    set_mote_sticks(mote, colour_new)
     return mote
 
 # Merge objects
