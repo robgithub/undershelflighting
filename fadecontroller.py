@@ -5,6 +5,7 @@
 # Rob 2019-04-15
 
 import sys, getopt, pickle, os, colorsys, socket 
+import copy
 from mote import Mote
 
 _config_filename = "data_fadecontroller.pickle"
@@ -46,14 +47,14 @@ def save_brightness(brightness, filename):
  
 def ping_service(mote, colour, brightness, config):
     print("...starting ping service  CTRL+c to quit")
-    colour_original = colour
+    colour_original = copy.deepcopy(colour)
     try:
         s = socket.socket(socket.AF_INET,socket.SOCK_RAW,socket.IPPROTO_ICMP)
         s.setsockopt(socket.SOL_IP, socket.IP_HDRINCL, 1)
         s.settimeout(config["poll_interval"])
-    except socket.error, err:
-        print err
-        print "run with sudo"
+    except socket.error as err:
+        print (err)
+        print ("run with sudo")
         sys.exit(2)
     try:
         while True:
@@ -62,10 +63,10 @@ def ping_service(mote, colour, brightness, config):
             is_ping = False
             try:
                 data, addr = s.recvfrom(1508)
-                print "Packet from %r: %r" % (addr,data)
+                print ("Packet from", addr)
                 is_ping = True
             except socket.timeout:
-                print "timeout"
+                print ("timeout")
             current_brightness = brightness
             if is_ping:
                 colour, brightness = calculate_colour_from_change(colour_original, brightness, config["increase"])
@@ -78,15 +79,15 @@ def ping_service(mote, colour, brightness, config):
     except KeyboardInterrupt:
         print("terminating")
 
-def calculate_colour_from_change(colour, brightness, change):
-    # colour conversion
-    print("current brightness",brightness)
+def calculate_colour_from_change(colour_original, brightness, change):
+    colour = copy.deepcopy(colour_original)
+    #print("current brightness",brightness)
     brightness = brightness + change
     if brightness <0:
         brightness = 0
     if brightness > 1.0:
         brightness = 1.0
-    print("new brightness",brightness)
+    #print("new brightness",brightness)
     # just first stick at the moment
     h,s,v = colorsys.rgb_to_hsv(colour[0][0], colour[0][1], colour[0][2])
     colour[0][0], colour[0][1], colour[0][2] = rgb_to_decimal(colorsys.hsv_to_rgb(h, s, brightness))
@@ -139,40 +140,43 @@ def usage():
     print("INCREASE and DECREASE values are between 0.0 - 1.0")
     print("{POLL} interval is in seconds and can be fractional")
     print("No parameters are mandatory")
+    print("Once running ping ICMP messages will be accepted as INCREASE triggers")
 
-try:
-  opts, args = getopt.getopt(sys.argv[1:], 'o:c:b:i:d:p:h', ['config-filename=', 'colour-filename=', 'brightness-filename=', 'increase=', 'decrease=', 'poll-interval=', 'help'])
-except getopt.GetoptError:
-  usage()
-  sys.exit(2)
-config_from_args = { 'colour_filename':None, 'brightness_filename':None, 'increase':None, 'decrease':None, 'poll_interval':None} 
-for opt, arg in opts:
-  if opt in ('-h', '--help'):
+def main():
+  try:
+    opts, args = getopt.getopt(sys.argv[1:], 'o:c:b:i:d:p:h', ['config-filename=', 'colour-filename=', 'brightness-filename=', 'increase=', 'decrease=', 'poll-interval=', 'help'])
+  except getopt.GetoptError:
     usage()
     sys.exit(2)
-  elif opt in ('-c', '--config-filename'):
-    config_filename = arg
-  elif opt in ('-c', '--colour-filename'):
-    config_from_args["colour_filename"] = arg
-  elif opt in ('-b', '--brightness-filename'):
-    config_from_args["brightness_filename"] = arg
-  elif opt in ('-i', '--increase'):
-    config_from_args["increase"] = float(arg)
-  elif opt in ('-d', '--decrease'):
-    config_from_args["decrease"] = float(arg)
-  elif opt in ('-p', '--poll-interval'):
-    config_from_args["poll_interval"] = float(arg)
-  else:
-    usage()
-    sys.exit(2)
-config = merge_objects(load_config(_config_filename), config_from_args)
-#print(config)
+  config_from_args = { 'colour_filename':None, 'brightness_filename':None, 'increase':None, 'decrease':None, 'poll_interval':None} 
+  for opt, arg in opts:
+    if opt in ('-h', '--help'):
+      usage()
+      sys.exit(2)
+    elif opt in ('-c', '--config-filename'):
+      config_filename = arg
+    elif opt in ('-c', '--colour-filename'):
+      config_from_args["colour_filename"] = arg
+    elif opt in ('-b', '--brightness-filename'):
+      config_from_args["brightness_filename"] = arg
+    elif opt in ('-i', '--increase'):
+      config_from_args["increase"] = float(arg)
+    elif opt in ('-d', '--decrease'):
+      config_from_args["decrease"] = float(arg)
+    elif opt in ('-p', '--poll-interval'):
+      config_from_args["poll_interval"] = float(arg)
+    else:
+      usage()
+      sys.exit(2)
+  config = merge_objects(load_config(_config_filename), config_from_args)
+  #print(config)
 
-save_pickle(_config_filename, config)
-print("Fade Controller Starting")
-colour, brightness = load_state(config["colour_filename"], config["brightness_filename"])
-print("inital colour and brightness",colour, brightness)
+  save_pickle(_config_filename, config)
+  print("Fade Controller Starting")
+  colour, brightness = load_state(config["colour_filename"], config["brightness_filename"])
+  print("inital colour and brightness",colour, brightness)
+  
+  mote_instance = init_motes(colour, brightness)
+  ping_service(mote_instance, colour, brightness, config)
 
-mote_instance = init_motes(colour, brightness)
-
-ping_service(mote_instance, colour, brightness, config)
+main()
