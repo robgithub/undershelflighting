@@ -68,6 +68,8 @@ def ping_service(mote, colour, brightness, config):
             except socket.timeout:
                 print ("timeout")
             current_brightness = brightness
+            # reload state to make sure it has not changed externally
+            colour_original, brightness = load_state(config["colour_filename"], config["brightness_filename"])
             if is_ping:
                 colour, brightness = calculate_colour_from_change(colour_original, brightness, config["increase"])
             else:    
