@@ -9,12 +9,19 @@ import copy
 from mote import Mote
 
 _config_filename = "data_fadecontroller.pickle"
+_debug = True
+
+
+def debug(message):
+    if (_debug):
+        print(message)
 
 # Pickle loader
 def load_pickle(filename, default):
    try:
        obj = pickle.load( open( filename, "rb" ) )
    except IOError:
+       debug("Loading failed")
        obj = default 
    return obj
 
@@ -28,7 +35,9 @@ def load_config(config_filename):
    return load_pickle(config_filename, { 'colour_filename':"mote.pickle", 'brightness_filename':"data_fadecontrollerbrightness.pickle", 'increase':1.0, 'decrease':0.1, 'poll_interval':4}) 
 
 def load_state(colour_filename, brightness_filename):
+   debug("Loading state")
    colour = load_colour(colour_filename)
+   debug("loaded colour data {0}".format(colour))
    brightness = load_brightness(brightness_filename)
    return colour, brightness
 
@@ -68,13 +77,14 @@ def ping_service(mote, colour, brightness, config):
             except socket.timeout:
                 print ("timeout")
             current_brightness = brightness
+            colour_current = copy.deepcopy(colour)
             # reload state to make sure it has not changed externally
             colour_original, brightness = load_state(config["colour_filename"], config["brightness_filename"])
             if is_ping:
                 colour, brightness = calculate_colour_from_change(colour_original, brightness, config["increase"])
             else:    
                 colour, brightness = calculate_colour_from_change(colour_original, brightness, 0.0-config["decrease"])
-            if brightness != current_brightness:
+            if (brightness != current_brightness) or (colour != colour_current):
                 save_brightness(brightness, config["brightness_filename"])
                 set_mote_sticks(mote, colour)
 
@@ -82,6 +92,7 @@ def ping_service(mote, colour, brightness, config):
         print("terminating")
 
 def calculate_colour_from_change(colour_original, brightness, change):
+    debug("calculating new colour from {0}".format(colour_original))
     colour = copy.deepcopy(colour_original)
     #print("current brightness",brightness)
     brightness = brightness + change
