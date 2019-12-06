@@ -1,0 +1,18 @@
+Welcome to my undershelf system
+
+cd into 
+
+src/undershelflighting/
+
+and run
+
+screen
+press enter to exit the welcome screen
+
+sudo python3 fadecontroller.py --decrease 0.1 --poll-interval 30 --increase 0.5
+(sudo is needed for the network packet access)
+
+once running
+CTRL+a then d
+
+you should be back to a new shell and can exit to disconnect
